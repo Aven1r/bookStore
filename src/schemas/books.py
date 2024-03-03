@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, field_validator
 from pydantic_core import PydanticCustomError
 
-__all__ = ["IncomingBook", "ReturnedAllBooks", "ReturnedBook"]
+__all__ = ["IncomingBook", "ReturnedAllBooks", "ReturnedBook", "UpdateBook"]
 
 
 # Базовый класс "Книги", содержащий поля, которые есть во всех классах-наследниках.
@@ -13,6 +13,7 @@ class BaseBook(BaseModel):
 
 class BookSeller(BaseModel):
     seller_id: int
+
 
 class BookValidation(BaseBook):
     year: int = 2024  # Пример присваивания дефолтного значения
@@ -33,12 +34,19 @@ class IncomingBook(BookValidation, BookSeller):
     pass
 
 
-
 # Класс, валидирующий исходящие данные. Он уже содержит id
 class ReturnedBook(BaseBook):
     id: int
     count_pages: int
     seller_id: int
+
+    class Config:
+        orm_mode = True
+
+
+class UpdateBook(BaseBook, BookSeller):
+    count_pages: int
+    pass
 
 
 # Класс для возврата массива объектов "Книга"

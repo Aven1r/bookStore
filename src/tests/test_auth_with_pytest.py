@@ -9,7 +9,7 @@ from src.tests.crud import get_new_seller, get_2_new_sellers
 async def test_login_success(async_client, db_session, get_new_seller):
     seller = get_new_seller
 
-    login_data = {"username": seller.email, 
+    login_data = {"username": seller.email,
                   "password": ORIGINAL_SELLER_1_PASSWORD}
 
     response = await async_client.post(API_PREFIX + "token", data=login_data)

@@ -1,10 +1,10 @@
-from typing import List, Optional
+from typing import List
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr
 
 from src.schemas.books import ReturnedBook
 
-__all__ = ["Seller", "SellerAuth", "SellerOut", "AllSellers", "SellerBooks"]
+__all__ = ["Seller", "SellerAuth", "SellerOut", "AllSellers", "ReturnedSellerBooks"]
 
 
 class Seller(BaseModel):
@@ -31,9 +31,5 @@ class AllSellers(BaseModel):
     sellers: List[SellerOut]
 
 
-
-class SellerBooks(SellerOut):
-    books: Optional[List[ReturnedBook]] = []
-
-    class Config:
-        from_attributes = True
+class ReturnedSellerBooks(SellerOut):
+    books: list[ReturnedBook]

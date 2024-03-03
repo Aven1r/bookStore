@@ -1,13 +1,13 @@
+import json
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response, status
-from icecream import ic
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.configurations.database import get_async_session
 from src.models.books import Book
-from src.schemas import IncomingBook, ReturnedAllBooks, ReturnedBook
+from src.schemas import IncomingBook, ReturnedAllBooks, ReturnedBook, UpdateBook
 from src.schemas import SellerOut
 from src.db.crud.auth import get_current_seller
 
@@ -63,14 +63,14 @@ async def delete_book(book_id: int, session: DBSession):
 
 
 # Ручка для обновления данных о книге
-@books_router.put("/{book_id}")
-async def update_book(book_id: int, new_data: ReturnedBook, session: DBSession, current_seller: SellerOut = Depends(get_current_seller)):
+@books_router.put("/{book_id}", status_code=status.HTTP_200_OK, response_model=ReturnedBook)
+async def update_book(book_id: int, new_data: UpdateBook, session: DBSession, current_seller: SellerOut = Depends(get_current_seller)):
     if updated_book := await session.get(Book, book_id):
         updated_book.author = new_data.author
         updated_book.title = new_data.title
         updated_book.year = new_data.year
         updated_book.count_pages = new_data.count_pages
-        updated_book.seller_id = current_seller.id
+        updated_book.seller_id = new_data.seller_id
 
         await session.flush()
 

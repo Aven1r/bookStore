@@ -4,7 +4,7 @@ from sqlalchemy import select
 from datetime import timedelta
 
 from src.models import books
-from src.tests.examples import API_PREFIX, ORIGINAL_SELLER_1_PASSWORD
+from src.tests.examples import API_PREFIX
 from src.tests.models import BookExample
 from src.db.crud.auth import authenticate_seller
 from src.tests.crud import get_new_seller, add_2_books_for_seller, add_book_for_seller
@@ -13,7 +13,7 @@ from src.auth.jwt import create_access_token
 
 pytest_plugins = ('pytest_asyncio',)
 
-# Тест на ручку создающую книгу
+
 @pytest.mark.asyncio
 async def test_create_book(async_client, db_session, get_new_seller):
     seller = get_new_seller
@@ -54,7 +54,7 @@ async def test_get_books(db_session, async_client, get_new_seller):
 
     assert response.status_code == status.HTTP_200_OK
 
-    assert len(response.json()["books"]) == 2  # Опасный паттерн! Если в БД есть данные, то тест упадет
+    assert len(response.json()["books"]) == 2  
 
     # Проверяем интерфейс ответа, на который у нас есть контракт.
     assert response.json() == {
@@ -118,40 +118,41 @@ async def test_delete_book(db_session, async_client, get_new_seller):
     assert len(res) == 0
 
 
-# # Тест на ручку обновления книги
-# @pytest.mark.asyncio
-# async def test_update_book(db_session, async_client, get_new_seller):
-#     # Создание пользователя и его аутентификация для получения токена
-#     seller = get_new_seller
+# Тест на ручку обновления книги
+@pytest.mark.asyncio
+async def test_update_book(db_session, async_client, get_new_seller):
+    # Создание пользователя и его аутентификация для получения токена
+    seller = get_new_seller
 
-#     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
-#     access_token = create_access_token(
-#         data={"sub": str(seller.id)}, expires_delta=access_token_expires
-#     )
+    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+    access_token = create_access_token(
+        data={"sub": str(seller.id)}, expires_delta=access_token_expires
+    )
 
-#     # Создание книги вручную
-#     book = await add_book_for_seller(db_session=db_session, sellerID=seller.id)
-#     new_book_data = BookExample(seller_id=seller.id).gen_new_book_data()
-#     # Выполнение запроса на обновление книги с использованием токена аутентификации
-#     response = await async_client.put(
-#         f"/api/v1/books/{book.id}",
-#         headers={"Authorization": f"Bearer {access_token}"},
-#         json={
-#             "title": new_book_data["title"],
-#             "author": new_book_data["author"],
-#             "count_pages": new_book_data["count_pages"],
-#             "year": new_book_data["year"],
-#         },
-#     )
+    # Создание книги вручную
+    book = await add_book_for_seller(db_session=db_session, sellerID=seller.id)
 
-#     assert response.status_code == status.HTTP_200_OK
+    new_book_data = BookExample(seller_id=seller.id).gen_new_book_data()
 
-#     # Проверка обновления данных книги
-#     res = await db_session.get(books.Book, book.id)
-#     assert res.title == new_book_data["title"]
-#     assert res.author == new_book_data["author"]
-#     print(res.count_pages)
-#     print(new_book_data["count_pages"])
-#     assert res.count_pages == new_book_data["count_pages"]
-#     assert res.year == new_book_data["year"]
-#     assert res.id == book.id
+    # Выполнение запроса на обновление книги с использованием токена аутентификации
+    response = await async_client.put(
+        f"/api/v1/books/{book.id}",
+        headers={"Authorization": f"Bearer {access_token}"},
+        json={
+            "title": new_book_data["title"],
+            "author": new_book_data["author"],
+            "count_pages": new_book_data["count_pages"],
+            "year": new_book_data["year"],
+            "seller_id": new_book_data["seller_id"],
+        },
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+
+    # Проверка обновления данных книги
+    res = await db_session.get(books.Book, book.id)
+    assert res.title == new_book_data["title"]
+    assert res.author == new_book_data["author"]
+    assert res.count_pages == new_book_data["count_pages"]
+    assert res.year == new_book_data["year"]
+    assert res.id == book.id

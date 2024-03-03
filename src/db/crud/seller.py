@@ -1,5 +1,4 @@
 from fastapi import HTTPException, Response, status
-from src.schemas import SellerBooks
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
@@ -16,6 +15,7 @@ async def get_seller_by_email(session: DBSession, email):
 
     return seller
 
+
 async def add_new_seller(seller, session: DBSession):
     new_seller = Seller(
         email=seller.email,
@@ -28,11 +28,13 @@ async def add_new_seller(seller, session: DBSession):
 
     return new_seller
 
+
 async def get_sellers_crud(session: DBSession):
     query = select(Seller)
     res = await session.execute(query)
     sellers = res.scalars().all()
     return {"sellers": sellers}
+
 
 async def delete_seller_crud(seller_id: int, session: DBSession):
     deleted_seller = await session.get(Seller, seller_id)
@@ -40,6 +42,7 @@ async def delete_seller_crud(seller_id: int, session: DBSession):
         await session.delete(deleted_seller)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Seller not found")
+
 
 async def update_seller_crud(seller_id: int, new_data: SellerOut, session: DBSession):
     if updated_seller := await session.get(Seller, seller_id):
@@ -52,6 +55,7 @@ async def update_seller_crud(seller_id: int, new_data: SellerOut, session: DBSes
         return updated_seller
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Seller not found")
 
+
 async def get_seller_by_id(session: DBSession, seller_id: int):
     stmt = select(Seller).where(Seller.id == seller_id)
     res = await session.execute(stmt)
@@ -59,11 +63,12 @@ async def get_seller_by_id(session: DBSession, seller_id: int):
 
     return seller
 
+
 async def get_seller_crud(seller_id: int, session: DBSession):
-    stmt = select(Seller).where(Seller.id == seller_id).options(selectinload(Seller.books))
-    res = await session.execute(stmt)
-    seller = res.scalar_one_or_none()
+    query = select(Seller).options(selectinload(Seller.books)).where(Seller.id == seller_id)
+    res = await session.execute(query)
+    seller = res.scalars().first()
     if seller:
-        return SellerBooks.from_orm(seller)
+        return seller
     else:
         return Response(status_code=status.HTTP_404_NOT_FOUND)

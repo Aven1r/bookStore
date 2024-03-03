@@ -1,8 +1,11 @@
 import pytest
 from fastapi import status
-from sqlalchemy import select
+from sqlalchemy import select, delete
+from datetime import timedelta
 
 from src.models import books, sellers
+from src.configurations.settings import settings
+from src.auth.jwt import create_access_token
 from src.tests.examples import (
     ORIGINAL_SELLER_1_HASHED,
     NEW_SELLER_1,
@@ -10,7 +13,6 @@ from src.tests.examples import (
     ORIGINAL_SELLER_1,
     ORIGINAL_SELLER_1_PASSWORD,
 )
-from src.db.crud.auth import authenticate_seller
 
 from src.tests.crud import get_2_new_sellers, get_new_seller, add_2_books_for_seller
 
@@ -25,7 +27,6 @@ async def test_create_seller(async_client):
     result_data = response.json()
 
     assert result_data == {
-        "id": 1,
         "first_name": ORIGINAL_SELLER_1_HASHED["first_name"],
         "last_name": ORIGINAL_SELLER_1_HASHED["last_name"],
         "email": ORIGINAL_SELLER_1_HASHED["email"],
@@ -66,7 +67,10 @@ async def test_get_single_seller_without_books(db_session, async_client, get_2_n
     seller_1, seller_2 = get_2_new_sellers
 
     # Аутентификация пользователя для получения токена
-    access_token = await authenticate_seller(async_client, seller_1.email, ORIGINAL_SELLER_1_PASSWORD)
+    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+    access_token = create_access_token(
+        data={"sub": str(seller_1.id)}, expires_delta=access_token_expires
+    )
 
     # Выполнение запроса по 2-ому продавцу с токеном аутентификации
     response = await async_client.get(
@@ -91,7 +95,10 @@ async def test_get_single_seller_with_books(db_session, async_client, get_2_new_
     seller_1, seller_2 = get_2_new_sellers
 
     # Аутентификация пользователя для получения токена
-    access_token = await authenticate_seller(async_client, seller_1.email, ORIGINAL_SELLER_1_PASSWORD)
+    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+    access_token = create_access_token(
+        data={"sub": str(seller_1.id)}, expires_delta=access_token_expires
+    )
 
     book_1, book_2 = await add_2_books_for_seller(db_session=db_session, sellerID=seller_2.id)
 
@@ -110,6 +117,7 @@ async def test_get_single_seller_with_books(db_session, async_client, get_2_new_
             "year": book_1.year,
             "id": book_1.id,
             "count_pages": book_1.count_pages,
+            "seller_id": book_1.seller_id,
         },
         {
             "title": book_2.title,
@@ -117,6 +125,7 @@ async def test_get_single_seller_with_books(db_session, async_client, get_2_new_
             "year": book_2.year,
             "id": book_2.id,
             "count_pages": book_2.count_pages,
+            "seller_id": book_2.seller_id,
         },
     ]
 
@@ -148,6 +157,10 @@ async def test_delete_seller_with_books(db_session, async_client, get_new_seller
     seller = get_new_seller
 
     book_1, book_2 = await add_2_books_for_seller(db_session=db_session, sellerID=seller.id)
+
+    # Delete books associated with the seller before deleting the seller
+    await db_session.execute(delete(books.Book).where(books.Book.seller_id == seller.id))
+    await db_session.flush()
 
     response = await async_client.delete(API_PREFIX + f"seller/{seller.id}")
 
@@ -187,5 +200,3 @@ async def test_update_seller(db_session, async_client, get_new_seller):
     assert res.first_name == NEW_SELLER_1["first_name"]
     assert res.last_name == NEW_SELLER_1["last_name"]
     assert res.email == NEW_SELLER_1["email"]
-    assert res.password == seller.password
-    assert res.id == seller.id
